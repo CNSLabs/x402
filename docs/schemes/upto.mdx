@@ -321,6 +321,10 @@ Every channel commits to a `receiverAuthorizer` (`authorized_signer`) that signs
 
 Self-managed: pass a hot Ed25519 key that does not need SOL or tokens. Facilitator-delegated: the server picks up `extra.receiverAuthorizer` from the facilitator's `/supported` response; the facilitator signs claim vouchers after correlating deposit and claim settles to the same authenticated caller. The server validates this at startup — if no local signer is configured and the facilitator does not advertise a valid `receiverAuthorizer`, `initialize()` fails before the first request.
 
+<Note>
+  The `@x402/svm` package requires `@solana/kit >= 8.0.0`. Kit 8.0.0 is the first release that builds and verifies transaction v1 messages, which the `upto` and `batch-settlement` facilitators now use for settlement transactions.
+</Note>
+
 For custom facilitator implementations, use `UptoSvmScheme` from the facilitator package. The scheme's rent cleanup manager asynchronously seals and reclaims rent from abandoned channels:
 
 <Tabs>
