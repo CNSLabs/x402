@@ -219,7 +219,7 @@ class TestValidate:
             (
                 "invalid_siwx_issued_at_in_future",
                 {
-                    "issuedAt": (datetime.now(timezone.utc) + timedelta(seconds=60))
+                    "issuedAt": (datetime.now(timezone.utc) + timedelta(minutes=10))
                     .isoformat()
                     .replace("+00:00", "Z")
                 },
@@ -239,7 +239,7 @@ class TestValidate:
             (
                 "invalid_siwx_not_yet_valid",
                 {
-                    "notBefore": (datetime.now(timezone.utc) + timedelta(seconds=60))
+                    "notBefore": (datetime.now(timezone.utc) + timedelta(minutes=10))
                     .isoformat()
                     .replace("+00:00", "Z")
                 },

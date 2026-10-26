@@ -565,20 +565,26 @@ class TestDuplicateSettlementCache:
     def mock_decode(self):
         """Patch decode_transaction_from_payload in both V1 and V2 facilitator modules.
 
-        The settle method now decodes the transaction to compute its message hash before
-        the cache check. These tests use arbitrary strings, not real Solana binaries, so
-        we return a fake transaction whose message bytes are deterministically derived
-        from the transaction string. Same string → same hash → cache hit; different
-        strings → different hashes → cache miss.
+        The settle method checks the wire version and decodes the transaction before the
+        cache check. These tests use arbitrary strings, not real Solana binaries, so we
+        report v0 and return a fake transaction whose message bytes are deterministically
+        derived from the transaction string. Same string → same hash → cache hit;
+        different strings → different hashes → cache miss.
         """
         fake = lambda payload: _FakeTx(payload.transaction)  # noqa: E731
         with patch(
             "x402.mechanisms.svm.exact.facilitator.decode_transaction_from_payload",
             side_effect=fake,
         ):
-            with patch(
-                "x402.mechanisms.svm.exact.v1.facilitator.decode_transaction_from_payload",
-                side_effect=fake,
+            with (
+                patch(
+                    "x402.mechanisms.svm.exact.facilitator.peek_wire_transaction_version",
+                    return_value=0,
+                ),
+                patch(
+                    "x402.mechanisms.svm.exact.v1.facilitator.decode_transaction_from_payload",
+                    side_effect=fake,
+                ),
             ):
                 yield
 
