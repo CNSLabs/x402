@@ -377,8 +377,10 @@ For custom facilitator implementations, use `UptoSvmScheme` from the facilitator
         // ResolveCallerIdentity: func(ctx uptosvm.DelegatedSettleContext) (string, error) {
         //     return authenticateSettleCaller(ctx) // JWT / SIWX / mTLS subject
         // },
-        // Optional: shared store for multi-replica facilitators. Default is in-memory.
-        // DelegatedAuthStore: sharedRedisDelegatedAuthStore,
+        // Optional: tune facilitator-submitted v1 settlement transactions.
+        // SettleComputeUnitLimit: ptr(uint32(100_000)),            // raise for Token-2022 extension mints
+        // SettleLoadedAccountsDataSizeLimit: ptr(uint32(4<<20)),  // default 4 MiB; sized for mainnet Token-2022
+        // ComputeUnitPriceMicroLamports: ptr(uint64(1)),           // priority fee for settlement txs
     })
     facilitator.Register([]x402.Network{network}, scheme)
 
