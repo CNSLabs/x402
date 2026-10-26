@@ -346,6 +346,10 @@ For custom facilitator implementations, use `UptoSvmScheme` from the facilitator
       // Raise these on RPC providers with slower replica convergence.
       // channelReadMaxAttempts: 6,
       // channelReadBackoffStepMs: 200,
+      // Optional: tune facilitator-submitted v1 settlement transactions.
+      // settleComputeUnitLimit: 100_000,          // raise for Token-2022 extension mints
+      // settleLoadedAccountsDataSizeLimit: 4 * 1024 * 1024, // default 4 MiB; sized for mainnet Token-2022
+      // computeUnitPriceMicroLamports: 1,          // priority fee for settlement txs
     });
 
     facilitator.register("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", svmUptoScheme);
