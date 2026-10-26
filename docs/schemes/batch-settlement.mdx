@@ -563,6 +563,10 @@ Set `withdrawDelay` greater than your claim cadence plus an operational safety m
 
 ### SVM Implementation
 
+<Note>
+  The `@x402/svm` package requires `@solana/kit >= 8.0.0`. Kit 8.0.0 is the first release that builds and verifies transaction v1 messages, which the SVM facilitator now uses for settlement transactions.
+</Note>
+
 `batch-settlement` on Solana uses the same [payment-channels program](https://github.com/solana-foundation/payment-channels) as `upto`. Unlike `upto`, which closes after one metered charge, `batch-settlement` keeps the channel open across many requests and advances a cumulative watermark. The client deposits once, then signs off-chain cumulative vouchers per request; the server verifies offchain, serves immediately, and redeems accumulated vouchers later through the facilitator.
 
 Two voucher modes are supported:
