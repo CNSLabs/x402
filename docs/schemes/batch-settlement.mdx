@@ -469,6 +469,66 @@ Client channel state is stored in memory by default. Persistent client storage i
   </Tab>
 </Tabs>
 
+### Voucher Management Modes
+
+The EVM batch-settlement scheme supports two voucher-management modes that differ in who stores the latest client-signed voucher and runs the claim/settle schedule.
+
+| Mode | `extra.voucherManager` | Who manages state | Typical use |
+|------|------------------------|-------------------|-------------|
+| **Self-managed** (default) | omitted or `"server"` | Resource server | Full control; channels survive facilitator changes |
+| **Facilitator-managed** | `"facilitator"` | Facilitator | Simpler server; no per-channel state or claim/settle loop required |
+
+In **self-managed** mode the resource server owns per-channel state (vouchers, watermark, claim/settle schedule) and the facilitator only verifies payloads and submits onchain transactions.
+
+In **facilitator-managed** mode the resource server is a pass-through: it calls `/verify` then `/settle` for every request (including the voucher itself) and uses the settle result as the payment response. The facilitator persists vouchers, tracks `chargedCumulativeAmount`, and runs the claim/settle schedule.
+
+To use facilitator-managed mode, the facilitator must advertise `voucherManager: ["server", "facilitator"]` in its `/supported` response. The server sets `voucherManager: "facilitator"` in the 402 `extra` and copies `receiverAuthorizer` and `withdrawDelay` from the facilitator's `/supported` response.
+
+#### Refund authorization in facilitator-managed mode
+
+Because the facilitator is always the `receiverAuthorizer` in facilitator-managed mode, it needs proof that the server consents to each cooperative refund. The 402 selects how that proof is given:
+
+- **Server-owned EOA** (`extra.refundAuthorizer` present): the server sets `extra.refundAuthorizer` to a stable EOA address. The client packs that address into `channelConfig.salt` (binding it to the `channelId`). The server signs each refund with that key and attaches `refundAuthorizerSignature` to the settle payload.
+- **Delegated refund** (`extra.refundAuthorizer` omitted): the server omits `extra.refundAuthorizer` and relies on the facilitator's `/settle` caller authentication. This requires the facilitator to advertise `delegatedRefund: true` on `/supported`.
+
+#### Facilitator-managed server setup
+
+A server running in facilitator-managed mode does not need a `receiverAuthorizerSigner`, channel storage, or a channel manager. It calls `/verify` and `/settle` for every request and lets the facilitator handle the rest.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import { HTTPFacilitatorClient } from "@x402/core/server";
+    import { BatchSettlementEvmScheme } from "@x402/evm/batch-settlement/server";
+    import { paymentMiddleware, x402ResourceServer } from "@x402/express";
+
+    const network = "eip155:84532" as const;
+    const facilitatorClient = new HTTPFacilitatorClient({ url: process.env.FACILITATOR_URL! });
+
+    // No receiverAuthorizerSigner or storage needed — the facilitator manages vouchers.
+    const batchScheme = new BatchSettlementEvmScheme(receiverAddress, {
+      voucherManager: "facilitator",
+    });
+
+    const resourceServer = new x402ResourceServer(facilitatorClient)
+      .register(network, batchScheme);
+
+    // No channelManager.start() needed — the facilitator runs claim/settle.
+
+    app.use(paymentMiddleware({
+      "GET /weather": {
+        accepts: {
+          scheme: "batch-settlement",
+          price: "$0.01",
+          network,
+          payTo: receiverAddress,
+        },
+      },
+    }, resourceServer));
+    ```
+  </Tab>
+</Tabs>
+
 ### Receiver Authorizer
 
 Every channel commits to a `receiverAuthorizer`, which signs claim and refund authorizations. The server must have a `receiverAuthorizer` available from one of two sources:
