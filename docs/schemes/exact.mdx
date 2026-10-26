@@ -546,6 +546,77 @@ For testnet funds, get test ADA from the [Cardano testnets faucet](https://docs.
 
 The `exact` scheme has network specifications for EVM, SVM, AVM, Stellar, Aptos, Casper, Hedera, TON, Cardano, Keeta, Sui, Concordium, NEAR, XRPL, and Bitcoin Lightning (`lnbtc`).
 
+### SVM Multi-Payee Splits
+
+The `exact` scheme on Solana supports an optional `extra.splits` array that distributes a single client payment across the primary recipient (`payTo`) and up to eight additional recipients in one atomic transaction. Use this for platform fees, revenue sharing, referral commissions, or fee-payer cost recovery.
+
+When `extra.splits` is present, the top-level `amount` is the total the client pays. Each split entry declares an absolute carve-out in base units of the same `asset`. The primary recipient (`payTo`) receives the remainder: `amount − Σ splits[].amount`.
+
+**Facilitator advertisement**
+
+Split support is an advertised facilitator capability. A facilitator announces it in the `extra` of its `/supported` response:
+
+```json
+{
+  "x402Version": 2,
+  "scheme": "exact",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  "extra": {
+    "feePayer": "EwWqGE4ZFKLofuestmU4LDdK7XM1N4ALgdZccwYugwGd",
+    "maxSplits": 8,
+    "ataCreationSponsored": true
+  }
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `maxSplits` | `0` (absent) | Maximum number of `extra.splits` entries the facilitator accepts. Absent means no split support. |
+| `ataCreationSponsored` | `false` (absent) | Whether the `feePayer` funds ATA creation for recipients marked `ataCreationRequired`. |
+
+**Payment requirements with splits**
+
+```json
+{
+  "scheme": "exact",
+  "network": "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+  "amount": "1050000",
+  "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "payTo": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+  "maxTimeoutSeconds": 60,
+  "extra": {
+    "feePayer": "EwWqGE4ZFKLofuestmU4LDdK7XM1N4ALgdZccwYugwGd",
+    "splits": [
+      {
+        "payTo": "3pF8Kg2aHbNvJkLMwEqR7YtDxZ5sGhJn4UV6mWcXrT9A",
+        "amount": "50000",
+        "memo": "platform fee",
+        "ataCreationRequired": false
+      }
+    ]
+  }
+}
+```
+
+In this example the client pays `1050000` base units total: `50000` to the split recipient and the `1000000` remainder to `payTo`.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `splits[].payTo` | Yes | Base58-encoded recipient public key. Must be distinct from `payTo` and other split recipients. |
+| `splits[].amount` | Yes | Absolute amount in base units of `asset` (not a percentage). Must be a positive integer. |
+| `splits[].memo` | No | Human-readable label for this leg (e.g. `"platform fee"`). Shown alongside the address when obtaining user consent; never emitted as an on-chain Memo instruction. |
+| `splits[].ataCreationRequired` | No | Default `false`. Marks this recipient's ATA as possibly needing creation, funded by the `feePayer`. Only valid when the facilitator advertises `ataCreationSponsored`. |
+
+**Key rules**
+
+- The primary remainder (`amount − Σ splits[].amount`) must be greater than zero.
+- Each split leg must match its declared amount exactly; only the primary leg tolerates overpayment (for smart-wallet rounding).
+- Resource servers must not issue requirements with more splits than the selected facilitator advertises.
+- Clients must verify split recipients, amounts, and memos before signing — a malicious server could otherwise inject splits to divert funds.
+- Networks that do not implement splits must reject requirements carrying a non-empty `splits` array.
+
+For the full schema, transaction layout, ATA-creation authorization, and verification rules, see the [`exact` SVM spec §5](https://github.com/x402-foundation/x402/blob/main/specs/schemes/exact/scheme_exact_svm.md).
+
 ### SVM Smart Wallet Support
 
 By default, the SVM facilitator only accepts transactions from standard (EOA) wallets using static instruction-layout validation. To also accept payments from Solana smart wallets (Squads, Swig, SPL Governance, etc.), enable simulation-based verification when constructing `ExactSvmScheme` on your facilitator:
