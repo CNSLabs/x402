@@ -118,6 +118,29 @@ This protection is enabled by default when using the standard SVM facilitator re
 
 **If you are a merchant settling payments directly (without a facilitator), you must implement equivalent duplicate detection yourself.** See the [Exact SVM Scheme Specification](https://github.com/x402-foundation/x402/blob/main/specs/schemes/exact/scheme_exact_svm.md) for the full specification.
 
+### Error codes
+
+Facilitators return structured error codes in the `invalidReason` field of a `VerifyResponse` and the `errorReason` field of a `SettleResponse`. The optional `invalidMessage` and `errorMessage` fields provide human-readable diagnostics for logs and operators — their text is free-form and may change across facilitators or releases. When matching specific error conditions, always use the `invalidReason` or `errorReason` code and never rely on message text.
+
+| Code | Returned by | Description |
+| ---- | ----------- | ----------- |
+| `insufficient_funds` | verify, settle | Client does not have enough tokens to complete the payment |
+| `invalid_exact_evm_payload_authorization_valid_after` | verify, settle | Payment authorization is not yet valid (before `validAfter` timestamp) |
+| `invalid_exact_evm_payload_authorization_valid_before` | verify, settle | Payment authorization has expired (after `validBefore` timestamp) |
+| `invalid_exact_evm_payload_authorization_value_mismatch` | verify, settle | Payment amount does not exactly match the required amount |
+| `invalid_exact_evm_payload_signature` | verify, settle | Payment authorization signature is invalid or improperly signed |
+| `invalid_exact_evm_payload_recipient_mismatch` | verify, settle | Recipient address does not match payment requirements |
+| `invalid_network` | verify, settle | Specified blockchain network is not supported |
+| `invalid_payload` | verify, settle | Payment payload is malformed or contains invalid data |
+| `invalid_payment_requirements` | verify, settle | Payment requirements object is invalid or malformed |
+| `invalid_scheme` | verify, settle | Specified payment scheme is not supported |
+| `unsupported_scheme` | verify, settle | Payment scheme is not supported by this facilitator |
+| `invalid_x402_version` | verify, settle | Protocol version is not supported |
+| `invalid_transaction_state` | settle | Blockchain transaction failed or was rejected |
+| `unexpected_verify_error` | verify | Unexpected error occurred during payment verification |
+| `unexpected_settle_error` | settle | Unexpected error occurred during payment settlement |
+| `settlement_pending` | settle | Settlement transaction was broadcast but confirmation could not be established (non-terminal — see [Settlement pending and auto-recovery](#settlement-pending-and-auto-recovery)) |
+
 ### Summary
 
 The facilitator acts as an independent verification and settlement layer within the x402 protocol. It helps servers confirm payments and submit transactions onchain without requiring direct blockchain infrastructure.
