@@ -113,6 +113,30 @@ These server-level hooks run for every payment regardless of which extensions ar
     server.on_after_settle(record_payment)
     ```
 
+    To fail the settle closed when a critical post-settle step fails, raise `AfterSettleAbortError`:
+
+    ```python
+    from x402 import x402ResourceServer, AfterSettleAbortError
+
+    server = x402ResourceServer(facilitator_client)
+
+    async def persist_voucher(context):
+        try:
+            await voucher_store.save(
+                transaction=context.result.transaction,
+                payer=context.result.payer,
+            )
+        except Exception as e:
+            # Onchain funds moved but persistence failed — fail closed so the
+            # client knows the resource was not delivered.
+            raise AfterSettleAbortError(
+                reason="voucher_store_unavailable",
+                message=str(e),
+            )
+
+    server.on_after_settle(persist_voucher)
+    ```
+
     For synchronous applications, use `x402ResourceServerSync`:
 
     ```python
